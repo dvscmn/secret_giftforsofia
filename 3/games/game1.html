@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Платформер</title>
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(to bottom, #0a0a0a, #1c1c1c);
+      font-family: 'Arial', sans-serif;
+      color: #fff;
+      text-align: center;
+      padding-bottom: 100px;
+    }
+    canvas {
+      border: 3px solid #ff4081;
+      background: #000;
+      display: block;
+      margin: 20px auto;
+      border-radius: 12px;
+    }
+    #levelDisplay {
+      margin-top: 10px;
+      font-size: 1.5rem;
+      animation: fadeIn 1s ease-in-out;
+    }
+    #instructions {
+      max-width: 800px;
+      margin: 20px auto;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #ccc;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    #touchControls {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin: 20px auto;
+      flex-wrap: wrap;
+    }
+    #touchControls button {
+      background: #ff4081;
+      color: white;
+      border: none;
+      font-size: 1.2rem;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px #ff4081aa;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    #touchControls button:hover {
+      background: #e91e63;
+    }
+  </style>
+</head>
+<body>
+  <h2 id="levelDisplay">Уровень 1</h2>
+  <div id="instructions">
+    <p>🔹 Управление: <b>← →</b> — движение, <b>пробел</b> — прыжок</p>
+    <p>🔹 Задача: доберись до правого края уровня, избегая падений</p>
+    <p>🔹 Пройди все 50 уровней и стань легендой!</p>
+  </div>
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+  <div id="touchControls">
+    <button onclick="keyPress('ArrowLeft')" onmouseup="keyRelease('ArrowLeft')">⬅️</button>
+    <button onclick="keyPress(' ')" onmouseup="keyRelease(' ')">⏫ Прыжок</button>
+    <button onclick="keyPress('ArrowRight')" onmouseup="keyRelease('ArrowRight')">➡️</button>
+  </div>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const gravity = 0.5, speed = 3, jumpPower = -10;
+    let keys = {}, levelIndex = 0, gameEnded = false;
+    let player = { x: 50, y: 300, vx: 0, vy: 0, w: 20, h: 20, onGround: false };
+    const winSound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_76b3826d50.mp3?filename=game-win-2-183905.mp3");
+
+    const levels = Array.from({ length: 50 }, (_, i) => {
+      const baseY = 350 - i * 2;
+      let platforms = [[0, baseY, 800, 20]];
+      for (let j = 1; j <= Math.min(5, i + 1); j++) {
+        platforms.push([
+          80 + j * 120 - i * 2,
+          baseY - j * 30,
+          90 - (i % 6) * 5,
+          10
+        ]);
+      }
+      return { platforms, playerStart: [30, baseY - 30] };
+    });
+
+    document.addEventListener("keydown", e => keys[e.key] = true);
+    document.addEventListener("keyup", e => keys[e.key] = false);
+
+    function keyPress(key) { keys[key] = true; }
+    function keyRelease(key) { keys[key] = false; }
+
+    function loadLevel(index) {
+      if (index >= levels.length) {
+        document.getElementById("levelDisplay").textContent = "🎉 Ты прошла все 50 уровней! Ты легенда!";
+        gameEnded = true;
+        return;
+      }
+      const level = levels[index];
+      document.getElementById("levelDisplay").textContent = `Уровень ${index + 1}`;
+      player.x = level.playerStart[0];
+      player.y = level.playerStart[1];
+      player.vx = 0; player.vy = 0; player.onGround = false;
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = "#00ffaa";
+      ctx.fillRect(player.x, player.y, player.w, player.h);
+    }
+
+    function drawPlatforms(platforms) {
+      ctx.fillStyle = "#ff4081";
+      platforms.forEach(p => ctx.fillRect(...p));
+    }
+
+    function checkCollision(px, py, pw, ph, rx, ry, rw, rh) {
+      return px < rx + rw && px + pw > rx && py < ry + rh && py + ph > ry;
+    }
+
+    function update() {
+      if (gameEnded) return;
+      const level = levels[levelIndex];
+      player.vx = 0;
+      if (keys["ArrowLeft"]) player.vx = -speed;
+      if (keys["ArrowRight"]) player.vx = speed;
+      if (keys[" "] && player.onGround) player.vy = jumpPower;
+
+      player.vy += gravity;
+      player.x += player.vx;
+      player.y += player.vy;
+      player.onGround = false;
+
+      if (player.x < 0) player.x = 0;
+      if (player.y > canvas.height) player.y = 300;
+
+      for (let p of level.platforms) {
+        if (checkCollision(player.x, player.y, player.w, player.h, ...p)) {
+          if (player.y + player.h - player.vy <= p[1]) {
+            player.y = p[1] - player.h;
+            player.vy = 0;
+            player.onGround = true;
+          }
+        }
+      }
+
+      if (player.x > canvas.width - player.w - 5) {
+        winSound.play();
+        levelIndex++;
+        setTimeout(() => loadLevel(levelIndex), 400);
+      }
+    }
+
+    function loop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!gameEnded) {
+        drawPlatforms(levels[levelIndex].platforms);
+        drawPlayer();
+        update();
+      }
+      requestAnimationFrame(loop);
+    }
+
+    loadLevel(0);
+    loop();
+  </script>
+</body>
+</html>

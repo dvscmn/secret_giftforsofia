@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Викторина</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(to right, #0f0c29, #302b63, #24243e);
+      color: white;
+      text-align: center;
+      padding: 2rem;
+      margin: 0;
+      animation: bgScroll 20s linear infinite;
+      background-size: 400% 400%;
+    }
+    @keyframes bgScroll {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    h2 {
+      font-size: 2rem;
+      margin-bottom: 2rem;
+      animation: fadeIn 1s ease;
+    }
+    #quiz {
+      max-width: 90%;
+      margin: auto;
+      animation: fadeIn 0.8s ease;
+    }
+    input {
+      padding: 10px;
+      font-size: 18px;
+      width: 80%;
+      max-width: 300px;
+      border-radius: 8px;
+      border: none;
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: 12px 20px;
+      font-size: 18px;
+      background: #ff4081;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+      box-shadow: 0 4px 10px rgba(255, 64, 129, 0.3);
+    }
+    button:hover {
+      background: #e91e63;
+    }
+    #timer {
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+      color: #ffd700;
+    }
+    .back-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: #333;
+      padding: 10px 15px;
+      font-size: 16px;
+      border-radius: 8px;
+      color: white;
+      text-decoration: none;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      transition: background 0.3s;
+    }
+    .back-btn:hover {
+      background: #555;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <a class="back-btn" href="../index.html">← Назад</a>
+  <h2>🧠 Проверь свою логику</h2>
+  <div id="timer">⏳ Время: <span id="time">30</span> сек</div>
+  <div id="quiz"></div>
+
+  <audio id="correctSound" src="https://cdn.pixabay.com/download/audio/2021/08/08/audio_6c2d88223d.mp3?filename=correct-2-46134.mp3"></audio>
+  <audio id="wrongSound" src="https://cdn.pixabay.com/download/audio/2021/08/08/audio_4b6e2c3d91.mp3?filename=wrong-2-46136.mp3"></audio>
+
+  <script>
+    const questions = [
+      {q: "Что тяжелее: 1 кг железа или 1 кг ваты?", a: "Они равны"},
+      {q: "Если на дереве 5 птиц и ты выстрелил, сколько останется?", a: "Ни одной"},
+      {q: "Сколько месяцев в году имеют 28 дней?", a: "Все"},
+      {q: "У отца было трое сыновей: Снуп, Снап и...", a: "Ты"},
+      {q: "Что поднимается, но никогда не опускается?", a: "Возраст"}
+    ];
+
+    let index = 0;
+    let timeLeft = 30;
+    let timerInterval;
+
+    const div = document.getElementById("quiz");
+    const timerDisplay = document.getElementById("time");
+    const correctSound = document.getElementById("correctSound");
+    const wrongSound = document.getElementById("wrongSound");
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timeLeft = 30;
+      timerDisplay.textContent = timeLeft;
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = timeLeft;
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          alert("⏰ Время вышло! Попробуй снова.");
+          show();
+        }
+      }, 1000);
+    }
+
+    function show() {
+      if (index >= questions.length) {
+        clearInterval(timerInterval);
+        div.innerHTML = "<h3>🎉 Ты прошла все уровни викторины! Умничка 😇</h3>";
+        document.getElementById("timer").style.display = "none";
+        return;
+      }
+      const q = questions[index];
+      div.innerHTML = `
+        <p style="font-size: 1.3rem;">${q.q}</p>
+        <input id="ans" placeholder="Твой ответ..."><br><br>
+        <button onclick="check()">Ответить</button>
+      `;
+      startTimer();
+    }
+
+    function check() {
+      const val = document.getElementById("ans").value.trim();
+      if (val.toLowerCase() === questions[index].a.toLowerCase()) {
+        correctSound.play();
+        index++;
+        show();
+      } else {
+        wrongSound.play();
+        alert("❌ Неправильно! Подумай ещё 👀");
+      }
+    }
+
+    show();
+  </script>
+</body>
+</html>
+

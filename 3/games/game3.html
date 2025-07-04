@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Лабиринт</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(to right, #000, #222);
+      color: white;
+      text-align: center;
+      margin: 0;
+      padding: 2rem;
+    }
+    h2 {
+      margin-bottom: 1rem;
+    }
+    #maze {
+      margin: 20px auto;
+      border-spacing: 2px;
+      animation: fadeIn 1s ease;
+    }
+    td {
+      width: 30px;
+      height: 30px;
+      background: #333;
+      transition: background 0.2s;
+    }
+    td.wall { background: black; }
+    td.goal { background: limegreen; animation: pulse 1s infinite; }
+    td.player { background: crimson; }
+    td.trap { background: darkred; animation: flash 1s infinite; }
+    #levelDisplay { font-size: 1.2rem; margin-top: 10px; color: #ccc; }
+    #recordDisplay { font-size: 1rem; margin-bottom: 1rem; color: gold; }
+    #touchControls {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .touch-btn {
+      background: #ff4081;
+      color: white;
+      border: none;
+      padding: 1rem;
+      font-size: 1.2rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px #ff4081aa;
+      cursor: pointer;
+    }
+    .touch-btn:hover {
+      background: #e91e63;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 0.9; }
+      50% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); opacity: 0.9; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes flash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+  </style>
+</head>
+<body>
+  <h2>🌀 Найди выход из лабиринта</h2>
+  <div id="recordDisplay">Текущий рекорд: <span id="record">0</span> уровней</div>
+  <div id="levelDisplay">Уровень 1</div>
+  <table id="maze"></table>
+
+  <div id="touchControls">
+    <button class="touch-btn" onclick="move('up')">⬆️</button>
+    <button class="touch-btn" onclick="move('left')">⬅️</button>
+    <button class="touch-btn" onclick="move('right')">➡️</button>
+    <button class="touch-btn" onclick="move('down')">⬇️</button>
+  </div>
+
+  <audio id="moveSound" src="move.mp3" preload="auto"></audio>
+
+  <script>
+    const TRAP = 3;
+    const moveSound = document.getElementById("moveSound");
+    const recordSpan = document.getElementById("record");
+    let record = localStorage.getItem("mazeRecord") || 0;
+    recordSpan.textContent = record;
+
+    const levels = [];
+    for (let l = 0; l < 20; l++) {
+      const size = 7;
+      const grid = Array.from({ length: size }, () => Array(size).fill(0));
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          if (y === 0 || x === 0 || y === size - 1 || x === size - 1) {
+            grid[y][x] = 1;
+          } else if ((x !== 1 || y !== 1) && (x !== size - 2 || y !== size - 2)) {
+            const rand = Math.random();
+            if (rand < 0.15) grid[y][x] = 1;
+            else if (rand < 0.20) grid[y][x] = TRAP;
+          }
+        }
+      }
+      grid[1][1] = 0;
+      grid[size - 2][size - 2] = 2;
+      levels.push(grid);
+    }
+
+    let levelIndex = 0;
+    let grid, table = document.getElementById("maze");
+    let px = 1, py = 1;
+
+    function loadLevel(i) {
+      grid = levels[i].map(row => [...row]);
+      px = 1;
+      py = 1;
+      draw();
+      document.getElementById("levelDisplay").textContent = `Уровень ${i + 1}`;
+    }
+
+    function draw() {
+      table.innerHTML = "";
+      for (let y = 0; y < grid.length; y++) {
+        let row = "<tr>";
+        for (let x = 0; x < grid[y].length; x++) {
+          let c = grid[y][x], cls = c === 1 ? "wall" : c === 2 ? "goal" : c === TRAP ? "trap" : "";
+          if (x === px && y === py) cls = "player";
+          row += `<td class="${cls}"></td>`;
+        }
+        table.innerHTML += row + "</tr>";
+      }
+    }
+
+    function move(dir) {
+      let nx = px, ny = py;
+      if (dir === "up") ny--;
+      if (dir === "down") ny++;
+      if (dir === "left") nx--;
+      if (dir === "right") nx++;
+      if (grid[ny] && grid[ny][nx] !== undefined && grid[ny][nx] !== 1) {
+        px = nx; py = ny;
+        moveSound.currentTime = 0;
+        moveSound.play();
+        if (grid[py][px] === TRAP) {
+          alert("💀 Ты попала в ловушку! Начинай уровень заново.");
+          loadLevel(levelIndex);
+          return;
+        }
+        if (grid[py][px] === 2) {
+          levelIndex++;
+          if (levelIndex > record) {
+            record = levelIndex;
+            localStorage.setItem("mazeRecord", record);
+            recordSpan.textContent = record;
+          }
+          if (levelIndex >= levels.length) {
+            alert("🎉 Ты прошла все уровни! Невероятно!");
+          } else {
+            alert("✅ Уровень пройден!");
+            loadLevel(levelIndex);
+          }
+        }
+      }
+      draw();
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "ArrowUp") move("up");
+      if (e.key === "ArrowDown") move("down");
+      if (e.key === "ArrowLeft") move("left");
+      if (e.key === "ArrowRight") move("right");
+    });
+
+    loadLevel(levelIndex);
+  </script>
+</body>
+</html>
